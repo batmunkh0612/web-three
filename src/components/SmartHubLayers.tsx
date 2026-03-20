@@ -99,15 +99,24 @@ function buildGentleMergeToLabelPath(
   return `M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`;
 }
 
+/**
+ * Org label → Application (last column, single org): straight horizontal for ~⅓ of the
+ * gap, then a smooth S (cubic) with horizontal arrival at the pill — matches sketch.
+ */
 function buildLastColumnOrgLabelFirstPath(
   labelX: number,
   labelY: number,
   pillX: number,
   pillY: number,
 ): string {
-  const midGapX = (labelX + pillX) / 2;
-  const cpX = (midGapX + pillX) / 2;
-  return `M${labelX},${labelY} L${midGapX},${labelY} C${cpX},${labelY} ${cpX},${pillY} ${pillX},${pillY}`;
+  const dx = pillX - labelX;
+  const straightFrac = 1 / 3;
+  const hx = labelX + dx * straightFrac;
+  const dxCurve = pillX - hx;
+  const handleT = 0.45;
+  const cp1x = hx + dxCurve * handleT;
+  const cp2x = pillX - dxCurve * handleT;
+  return `M${labelX},${labelY} L${hx},${labelY} C${cp1x},${labelY} ${cp2x},${pillY} ${pillX},${pillY}`;
 }
 
 function useLineCalculation(
