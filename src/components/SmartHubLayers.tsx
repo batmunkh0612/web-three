@@ -102,13 +102,18 @@ function buildGentleMergeToLabelPath(
 /**
  * Org label → Application (last column, single org): straight horizontal for ~⅓ of the
  * gap, then a smooth S (cubic) with horizontal arrival at the pill — matches sketch.
+ * Subpaths use the same pill-dot + merge-dot phases as other columns (3s cycle).
  */
-function buildLastColumnOrgLabelFirstPath(
+function buildLastColumnOrgPathParts(
   labelX: number,
   labelY: number,
   pillX: number,
   pillY: number,
-): string {
+): {
+  full: string;
+  labelToMerge: string;
+  mergeToPill: string;
+} {
   const dx = pillX - labelX;
   const straightFrac = 1 / 3;
   const hx = labelX + dx * straightFrac;
@@ -116,7 +121,11 @@ function buildLastColumnOrgLabelFirstPath(
   const handleT = 0.45;
   const cp1x = hx + dxCurve * handleT;
   const cp2x = pillX - dxCurve * handleT;
-  return `M${labelX},${labelY} L${hx},${labelY} C${cp1x},${labelY} ${cp2x},${pillY} ${pillX},${pillY}`;
+  const full = `M${labelX},${labelY} L${hx},${labelY} C${cp1x},${labelY} ${cp2x},${pillY} ${pillX},${pillY}`;
+  /** Merge → label (same start/end sense as `buildMergeToLabelPath`) so `mergeDot(..., true)` matches other org lines. */
+  const labelToMerge = `M${hx},${labelY} L${labelX},${labelY}`;
+  const mergeToPill = `M${hx},${labelY} C${cp1x},${labelY} ${cp2x},${pillY} ${pillX},${pillY}`;
+  return { full, labelToMerge, mergeToPill };
 }
 
 function useLineCalculation(
@@ -362,15 +371,15 @@ function ConnectionLines({
     return false;
   };
 
-  const lastColOrgCombinedD =
+  const lastColOrgPaths =
     lastColSingleOrgCombined && orgPillLines[0] && orgConnector
-      ? buildLastColumnOrgLabelFirstPath(
+      ? buildLastColumnOrgPathParts(
           orgConnector.x2,
           orgConnector.y2,
           orgPillLines[0].x1,
           orgPillLines[0].y1,
         )
-      : "";
+      : null;
 
   const CYCLE = 3.0;
 
@@ -474,10 +483,10 @@ function ConnectionLines({
         );
       })}
 
-      {lastColSingleOrgCombined && lastColOrgCombinedD ? (
+      {lastColOrgPaths ? (
         <path
           key="last-col-org-combined"
-          d={lastColOrgCombinedD}
+          d={lastColOrgPaths.full}
           fill="none"
           stroke="rgba(148,163,184,0.6)"
           strokeWidth={0.7}
@@ -485,13 +494,21 @@ function ConnectionLines({
         />
       ) : null}
 
-      {lastColSingleOrgCombined ? (
-        pillDot(
-          lastColOrgCombinedD,
-          "#e5e7eb",
-          `org-${colIndex}-combined`,
-          true,
-        )
+      {lastColOrgPaths ? (
+        <>
+          {pillDot(
+            lastColOrgPaths.mergeToPill,
+            "#e5e7eb",
+            `org-${colIndex}-p-combined`,
+            false,
+          )}
+          {mergeDot(
+            lastColOrgPaths.labelToMerge,
+            "#e5e7eb",
+            `org-${colIndex}-m-combined`,
+            true,
+          )}
+        </>
       ) : (
         <>
           {orgPillLines.map((pl) =>
